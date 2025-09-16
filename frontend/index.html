@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JHS Recruitment Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Poppins Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Feather Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --secondary: #7c3aed;
+            --accent: #ec4899;
+            --neutral-800: #1f2937;
+            --neutral-700: #374151;
+            --neutral-200: #e5e7eb;
+            --neutral-100: #f3f4f6;
+            --white: #ffffff;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--neutral-100);
+            color: var(--neutral-700);
+        }
+
+        .sidebar {
+            background-color: var(--neutral-800);
+            transition: transform 0.3s ease-in-out;
+            z-index: 50;
+        }
+
+        @media (min-width: 768px) {
+            .sidebar {
+                transform: translateX(0) !important;
+            }
+        }
+        
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+
+        .nav-item {
+            position: relative;
+            transition: all 0.3s ease;
+            color: #d1d5db;
+        }
+        
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--white);
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: var(--white);
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .content-container {
+            transition: all 0.3s ease;
+            margin-left: 250px;
+        }
+        
+        .card {
+            background-color: var(--white);
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: var(--white);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
+        }
+
+        input, textarea, select {
+            transition: all 0.3s ease;
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2) !important;
+        }
+        
+        @media (max-width: 768px) {
+            .content-container {
+                margin-left: 0 !important;
+            }
+        }
+
+        .schedule-table td:first-child, .candidates-table th:first-child, .candidates-table td:first-child {
+            min-width: 120px;
+            white-space: nowrap;
+            background-color: var(--neutral-200);
+            font-weight: 500;
+            padding: 8px;
+        }
+        .schedule-table td, .candidates-table th, .candidates-table td {
+            padding: 8px;
+            vertical-align: middle;
+        }
+        .schedule-table input[type="text"] {
+            width: 100px;
+        }
+        #file-info ul {
+            margin: 0;
+            padding-left: 1rem;
+        }
+        .table-container {
+            overflow-x: auto;
+            max-width: 100%;
+        }
+        .resume-viewer {
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+        }
+        .pdf-viewer {
+            width: 100%;
+            height: 500px;
+            border: none;
+        }
+        /* Candidate Card Styles */
+        .candidate-card {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            min-height: 300px;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .candidate-card.expanded {
+            max-height: none;
+            min-height: 400px;
+        }
+        .candidate-eye-icon {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .see-more {
+            display: none;
+            position: absolute;
+            bottom: 0.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: pointer;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        .candidate-card:hover .see-more,
+        .candidate-card.expanded .see-more {
+            display: block;
+        }
+        .candidate-card.expanded .content {
+            max-height: none;
+        }
+        .content {
+            max-height: 200px;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .filter-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body class="flex">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="sidebar fixed top-0 left-0 h-full w-64 flex flex-col shadow-2xl sidebar-hidden md:block">
+        <div class="p-6 text-2xl font-bold text-center text-white bg-neutral-800 flex items-center justify-center space-x-2">
+            <i data-feather="briefcase"></i>
+            <span>JHS Recruit</span>
+        </div>
+        
+        <div class="flex-1 mt-8 space-y-2">
+            <a href="#" data-page="upload" class="nav-item flex items-center py-3 px-6 space-x-3">
+                <i data-feather="upload-cloud"></i>
+                <span>Upload Resumes</span>
+            </a>
+            <a href="#" data-page="match" class="nav-item flex items-center py-3 px-6 space-x-3">
+                <i data-feather="git-pull-request"></i>
+                <span>Match Resumes</span>
+            </a>
+            <a href="#" data-page="candidates" class="nav-item flex items-center py-3 px-6 space-x-3">
+                <i data-feather="users"></i>
+                <span>Candidates</span>
+            </a>
+            <a href="#" data-page="messaged" class="nav-item flex items-center py-3 px-6 space-x-3">
+                <i data-feather="send"></i>
+                <span>Messaged</span>
+            </a>
+            <a href="#" data-page="interviews" class="nav-item flex items-center py-3 px-6 space-x-3">
+                <i data-feather="calendar"></i>
+                <span>Interviews</span>
+            </a>
+            <a href="#" data-page="logout" class="nav-item flex items-center py-3 px-6 space-x-3">
+                <i data-feather="log-out"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+        
+        <div class="p-4">
+            <button id="closeSidebarBtn" class="md:hidden text-gray-400 hover:text-white focus:outline-none flex items-center space-x-2">
+                <i data-feather="chevrons-left"></i>
+                <span>Close</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-1">
+        <!-- Header Bar -->
+        <header class="bg-white shadow-md p-4 flex justify-between items-center md:justify-end">
+            <button id="toggleSidebarBtn" class="md:hidden text-gray-600 focus:outline-none">
+                <i data-feather="menu" class="w-6 h-6"></i>
+            </button>
+            <div class="flex items-center space-x-4">
+                <span class="font-medium">Welcome, <span id="userName">Recruiter</span>!</span>
+                <img src="jhs_logo.jpg" alt="JHS Logo" class="w-10 h-10"/>
+            </div>
+        </header>
+
+        <!-- Content Container -->
+        <main id="content" class="content-container p-6 md:p-8">
+            <!-- Upload Resumes Page -->
+            <div id="upload-page" class="page hidden fade-in">
+                <h1 class="text-4xl font-bold text-gray-800 mb-8">Upload New Resumes</h1>
+                <div class="card p-8 max-w-2xl mx-auto">
+                    <div class="mb-6">
+                        <label for="referenceName" class="block text-sm font-medium text-gray-700 mb-1">Reference Name</label>
+                        <input type="text" id="referenceName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm p-3" placeholder="Enter Reference Name" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Upload Resume (PDF/Word)</label>
+                        <div id="upload-area" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md cursor-pointer hover:border-primary upload-trigger">
+                            <div class="space-y-1 text-center">
+                                <i data-feather="file-text" class="mx-auto h-12 w-12 text-gray-400"></i>
+                                <div class="flex text-sm text-gray-600">
+                                    <label for="resumeFile" class="relative cursor-pointer bg-white rounded-md font-medium text-primary hover:text-secondary">
+                                        <span>Click to upload</span>
+                                    </label>
+                                    <p class="pl-1">or drag and drop</p>
+                                </div>
+                                <p class="text-xs text-gray-500">PDF, DOC, DOCX up to 5MB</p>
+                            </div>
+                        </div>
+                        <input id="resumeFile" name="resumeFile" type="file" multiple class="hidden" accept=".pdf,.doc,.docx">
+                    </div>
+                    <div id="file-info" class="hidden items-center bg-gray-100 p-4 rounded-lg">
+                        <i data-feather="check-circle" class="text-green-500 mr-3"></i>
+                        <span id="selectedFileName" class="font-medium text-gray-700"></span>
+                        <button id="clearFileBtn" class="ml-auto text-red-500 hover:text-red-700"><i data-feather="x-circle"></i></button>
+                    </div>
+                    <button id="uploadBtn" class="w-full btn-primary font-bold py-3 px-4 rounded-md mt-6">
+                        Upload and Process Resume
+                    </button>
+                </div>
+            </div>
+
+            <!-- Match Resumes Page -->
+            <div id="match-page" class="page hidden fade-in">
+                <h1 class="text-4xl font-bold text-gray-800 mb-8">Find the Perfect Candidate</h1>
+                <div class="card p-8 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                        <div>
+                            <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
+                            <input type="text" id="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3" placeholder="e.g., Auditor" required>
+                        </div>
+                        <div>
+                            <label for="threshold" class="block text-sm font-medium text-gray-700">Minimum Score (Optional)</label>
+                            <input type="number" id="threshold" min="0" max="100" step="0.1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3" placeholder="Default: 60" value="60">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="jd" class="block text-sm font-medium text-gray-700">Job Description</label>
+                        <textarea id="jd" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3" placeholder="Paste the job description here..." required></textarea>
+                    </div>
+                    <button id="matchBtn" class="w-full btn-primary font-bold py-3 px-4 rounded-md mt-6 flex items-center justify-center space-x-2">
+                        <i data-feather="users"></i>
+                        <span>Match Resumes</span>
+                    </button>
+                </div>
+
+                <!-- Results Table -->
+                <div id="matchResults" class="hidden">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Top Matches</h2>
+                    <div class="table-container">
+                        <table class="w-full text-left rounded-lg candidates-table">
+                            <thead>
+                                <tr class="bg-gray-200">
+                                    <th class="px-6 py-3 text-gray-700"><input type="checkbox" id="selectAll"></th>
+                                    <th class="px-6 py-3 text-gray-700">Reference Name</th>
+                                    <th class="px-6 py-3 text-gray-700">Name</th>
+                                    <th class="px-6 py-3 text-gray-700">Email</th>
+                                    <th class="px-6 py-3 text-gray-700">Phone</th>
+                                    <th class="px-6 py-3 text-gray-700">Role</th>
+                                    <th class="px-6 py-3 text-gray-700">Score</th>
+                                    <th class="px-6 py-3 text-gray-700">Resume</th>
+                                </tr>
+                            </thead>
+                            <tbody id="candidatesBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4">
+                        <button id="exportExcelBtn" class="btn-primary font-bold py-2 px-4 rounded-md flex items-center space-x-2">
+                            <i data-feather="download"></i>
+                            <span>Export to Excel</span>
+                        </button>
+                        <button id="messageCandidatesBtn" class="btn-primary font-bold py-2 px-4 rounded-md flex items-center space-x-2 ml-4">
+                            <i data-feather="message-circle"></i>
+                            <span>Send Message to Selected</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Candidates Page -->
+            <div id="candidates-page" class="page hidden fade-in">
+                <h1 class="text-4xl font-bold text-gray-800 mb-8">Candidates</h1>
+                <div class="card p-8 mb-8">
+                    <!-- Search Bar -->
+                    <div class="mb-6">
+                        <label for="candidateSearch" class="block text-sm font-medium text-gray-700 mb-2">Search by Name, Role, Experience, Location, or Qualification</label>
+                        <input type="text" id="candidateSearch" class="w-full p-3 border border-gray-300 rounded-md focus:border-primary focus:ring-primary" placeholder="Search candidates...">
+                    </div>
+                    <!-- Filters -->
+                    <div class="filter-section mb-6">
+                        <div>
+                            <label for="experience" class="block text-sm font-medium text-gray-700 mb-2">Experience</label>
+                            <select id="experience" class="w-full p-3 border border-gray-300 rounded-md focus:border-primary focus:ring-primary">
+                                <option value="">All Experience</option>
+                                <option value="Fresher">Fresher</option>
+                                <option value="0–1 year">0–1 year</option>
+                                <option value="1–3 years">1–3 years</option>
+                                <option value="3–5 years">3–5 years</option>
+                                <option value=">5 years">>5 years</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="location" class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                            <select id="location" class="w-full p-3 border border-gray-300 rounded-md focus:border-primary focus:ring-primary">
+                                <option value="">All Locations</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="qualification" class="block text-sm font-medium text-gray-700 mb-2">Qualification</label>
+                            <select id="qualification" class="w-full p-3 border border-gray-300 rounded-md focus:border-primary focus:ring-primary">
+                                <option value="">All Qualifications</option>
+                                <option value="Bachelor's">Bachelor's</option>
+                                <option value="Master's">Master's</option>
+                                <option value="MBA">MBA</option>
+                                <option value="PhD">PhD</option>
+                                <option value="Diploma">Diploma</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mb-6">
+                        <button id="applyFiltersBtn" class="btn-primary font-bold py-2 px-4 rounded-md flex items-center space-x-2">
+                            <i data-feather="filter"></i>
+                            <span>Apply Filters</span>
+                        </button>
+                        <button id="clearFiltersBtn" class="btn-primary font-bold py-2 px-4 rounded-md flex items-center space-x-2">
+                            <i data-feather="x-circle"></i>
+                            <span>Clear Filters</span>
+                        </button>
+                    </div>
+                    <div id="candidatesContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        <!-- Dynamic candidate cards will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messaged Candidates Page -->
+            <div id="messaged-page" class="page hidden fade-in">
+                <h1 class="text-4xl font-bold text-gray-800 mb-8">Messaged Candidates</h1>
+                <div id="messaged-container" class="grid gap-6">
+                    <!-- Dynamic containers will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Interviews (Scheduled) Page -->
+            <div id="interviews-page" class="page hidden fade-in">
+                <h1 class="text-4xl font-bold text-gray-800 mb-8">Scheduled Interviews</h1>
+                <div id="scheduled-container" class="grid gap-6">
+                    <!-- Dynamic containers will be inserted here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+
+            const API_BASE_URL = 'http://localhost:8000';
+
+            // Authentication Check
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                console.error('No auth token found');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Display User Name
+            const userNameSpan = document.getElementById('userName');
+            const storedName = localStorage.getItem('userName');
+            console.log(`Stored User Name: ${storedName}`);
+            if (storedName) {
+                userNameSpan.textContent = storedName;
+            }
+
+            // Sidebar Toggle
+            const sidebar = document.getElementById('sidebar');
+            const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+            const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+            toggleSidebarBtn.addEventListener('click', () => sidebar.classList.remove('sidebar-hidden'));
+            closeSidebarBtn.addEventListener('click', () => sidebar.classList.add('sidebar-hidden'));
+
+            // Page Switching
+            const navItems = document.querySelectorAll('.nav-item');
+            const pages = document.querySelectorAll('.page');
+
+            function showPage(pageId) {
+                if (pageId === 'logout') {
+                    Swal.fire({
+                        title: 'Logout',
+                        text: 'Do you want to logout?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: 'var(--primary)',
+                        cancelButtonColor: 'var(--danger)',
+                        confirmButtonText: 'Yes',
+                        cancelButtonText: 'No'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            localStorage.clear();
+                            window.location.href = 'login.html';
+                        }
+                    });
+                    return;
+                }
+
+                pages.forEach(page => page.classList.add('hidden'));
+                document.getElementById(`${pageId}-page`).classList.remove('hidden');
+                
+                navItems.forEach(item => item.classList.remove('active'));
+                const activeNavItem = document.querySelector(`[data-page="${pageId}"]`);
+                if (activeNavItem) activeNavItem.classList.add('active');
+
+                if (window.innerWidth < 768) {
+                    sidebar.classList.add('sidebar-hidden');
+                }
+
+                if (pageId === 'messaged') fetchMessaged();
+                if (pageId === 'interviews') fetchScheduled();
+                if (pageId === 'candidates') {
+                    fetchLocations(); // Populate location dropdown
+                    fetchCandidates(); // Load candidates on page switch
+                }
+            }
+
+            navItems.forEach(item => {
+                item.addEventListener('click', e => {
+                    e.preventDefault();
+                    showPage(item.getAttribute('data-page'));
+                });
+            });
+
+            // Default Page
+            showPage('upload');
+
+            // Prevent leaving the page
+            window.onbeforeunload = function() {
+                return "Do you want to exit?";
+            };
+
+            // File Upload UI
+            const resumeFileInput = document.getElementById('resumeFile');
+            const fileInfoDiv = document.getElementById('file-info');
+            const selectedFileNameSpan = document.getElementById('selectedFileName');
+            const clearFileBtn = document.getElementById('clearFileBtn');
+            const uploadArea = document.getElementById('upload-area');
+
+            resumeFileInput.addEventListener('change', handleFileSelect);
+            clearFileBtn.addEventListener('click', clearFile);
+
+            uploadArea.addEventListener('click', (e) => {
+                if (e.target.tagName.toLowerCase() !== 'input') {
+                    resumeFileInput.click();
+                }
+            });
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, () => uploadArea.classList.add('border-primary'), false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('border-primary'), false);
+            });
+            uploadArea.addEventListener('drop', handleDrop, false);
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                resumeFileInput.files = dt.files;
+                handleFileSelect();
+            }
+
+            function handleFileSelect() {
+                if (resumeFileInput.files.length > 0) {
+                    const fileNames = Array.from(resumeFileInput.files).map(file => file.name).join(', ');
+                    selectedFileNameSpan.textContent = fileNames;
+                    fileInfoDiv.classList.remove('hidden');
+                    fileInfoDiv.classList.add('flex');
+                } else {
+                    fileInfoDiv.classList.add('hidden');
+                    fileInfoDiv.classList.remove('flex');
+                }
+            }
+
+            function clearFile() {
+                resumeFileInput.value = '';
+                fileInfoDiv.classList.add('hidden');
+                fileInfoDiv.classList.remove('flex');
+            }
+
+            // Upload Resume
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.addEventListener('click', async () => {
+                const referenceName = document.getElementById('referenceName').value.trim();
+                const resumeFiles = document.getElementById('resumeFile').files;
+
+                if (!referenceName || resumeFiles.length === 0) {
+                    Swal.fire({ icon: 'error', title: 'Oops...', text: 'Please fill in the Reference Name and select at least one resume file.', confirmButtonColor: 'var(--primary)' });
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('reference_name', referenceName);
+                for (let i = 0; i < resumeFiles.length; i++) {
+                    formData.append('resumes', resumeFiles[i]);
+                }
+
+                const token = localStorage.getItem('access_token');
+
+                Swal.fire({
+                    title: 'Uploading...',
+                    text: 'Your resume is being processed.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/upload-resumes/`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: formData
+                    });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        Swal.fire({ icon: 'success', title: 'Success!', text: data.message || 'Resumes uploaded successfully.', confirmButtonColor: 'var(--primary)' });
+                        document.getElementById('referenceName').value = '';
+                        clearFile();
+                        if (document.getElementById('candidates-page').classList.contains('hidden') === false) {
+                            fetchCandidates();
+                        }
+                    } else {
+                        throw new Error(data.detail || 'Upload failed');
+                    }
+                } catch (error) {
+                    Swal.fire({ icon: 'error', title: 'Upload Error', text: `Failed to upload resume: ${error.message}`, confirmButtonColor: 'var(--primary)' });
+                }
+            });
+
+            // Match Resumes
+            const matchBtn = document.getElementById('matchBtn');
+            const candidatesBody = document.getElementById('candidatesBody');
+            const exportExcelBtn = document.getElementById('exportExcelBtn');
+            const messageCandidatesBtn = document.getElementById('messageCandidatesBtn');
+
+            matchBtn.addEventListener('click', async () => {
+                const role = document.getElementById('role').value.trim();
+                const jd = document.getElementById('jd').value.trim();
+                const threshold = document.getElementById('threshold').value;
+
+                if (!role || !jd) {
+                    Swal.fire({ 
+                        icon: 'error', 
+                        title: 'Missing Information', 
+                        text: 'Please provide both a Role and a Job Description.', 
+                        confirmButtonColor: 'var(--primary)' 
+                    });
+                    return;
+                }
+
+                const payload = { role, jd };
+                if (threshold) payload.threshold = parseFloat(threshold);
+                
+                Swal.fire({
+                    title: 'Matching Resumes...',
+                    text: 'Finding the best candidates for you.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                    console.log('Matching Payload:', JSON.stringify(payload));
+                    const token = localStorage.getItem('access_token');
+                    const response = await fetch(`${API_BASE_URL}/match-resumes/`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    console.log('Match Response Status:', response.status);
+
+                    const data = await response.json();
+                    console.log('Match Response Data:', data);
+
+                    Swal.close();
+                    if (response.ok) {
+                        displayCandidates(data.matched_candidates);
+                        document.getElementById('matchResults').classList.remove('hidden');
+                    } else {
+                        throw new Error(data.detail || 'Matching failed');
+                    }
+                } catch (error) {
+                    console.error('Matching Error:', error);
+                    Swal.fire({ 
+                        icon: 'error', 
+                        title: 'Matching Error', 
+                        text: `Failed to match resumes: ${error.message}. Check console for details.`, 
+                        confirmButtonColor: 'var(--primary)' 
+                    });
+                }
+            });
+
+            function displayCandidates(candidates) {
+                candidatesBody.innerHTML = '';
+                if (!candidates || candidates.length === 0) {
+                    candidatesBody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-500 py-4">No candidates matched the criteria.</td></tr>';
+                    return;
+                }
+
+                console.log('Matched Candidates:', candidates);
+                candidates.forEach(c => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="px-6 py-4"><input type="checkbox" class="candidate-checkbox" data-cid="${c.candidate_id}" data-name="${c.name}" data-mobile="${c.phone}" data-email="${c.email}" data-role="${c.role}" data-reference-name="${c.reference || 'Unknown'}"></td>
+                        <td class="px-6 py-4">${c.reference || 'Unknown'}</td>
+                        <td class="px-6 py-4">${c.name}</td>
+                        <td class="px-6 py-4">${c.email}</td>
+                        <td class="px-6 py-4">${c.phone}</td>
+                        <td class="px-6 py-4">${c.role}</td>
+                        <td class="px-6 py-4">${c.score}%</td>
+                        <td class="px-6 py-4">
+                            <button class="view-resume-btn btn-primary py-1 px-2 rounded" data-cid="${c.candidate_id}"><i data-feather="eye"></i></button>
+                        </td>
+                    `;
+                    candidatesBody.appendChild(row);
+                });
+                feather.replace();
+            }
+
+            // View Resume
+            candidatesBody.addEventListener('click', async (e) => {
+                const viewBtn = e.target.closest('.view-resume-btn');
+                if (viewBtn) {
+                    const candidateId = viewBtn.dataset.cid;
+                    try {
+                        const token = localStorage.getItem('access_token');
+                        const response = await fetch(`${API_BASE_URL}/get-resume/${candidateId}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const fileName = response.headers.get('Content-Disposition')?.split('filename=')[1] || `resume_${candidateId}.pdf`;
+                            const fileExtension = fileName.split('.').pop().toLowerCase();
+
+                            let viewerHtml = '';
+                            if (fileExtension === 'pdf') {
+                                const url = URL.createObjectURL(blob);
+                                viewerHtml = `<iframe class="pdf-viewer" src="${url}" type="application/pdf"></iframe>`;
+                            } else {
+                                const text = await blob.text();
+                                viewerHtml = `<pre class="resume-viewer whitespace-pre-wrap">${text}</pre>`;
+                            }
+
+                            Swal.fire({
+                                title: 'Resume Viewer',
+                                html: viewerHtml,
+                                showConfirmButton: false,
+                                showCloseButton: true,
+                                customClass: {
+                                    popup: 'max-w-4xl max-h-[80vh] overflow-y-auto'
+                                }
+                            });
+                        } else {
+                            throw new Error('Failed to fetch resume');
+                        }
+                    } catch (error) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: `Failed to view resume: ${error.message}`, confirmButtonColor: 'var(--primary)' });
+                    }
+                }
+            });
+
+            // Fetch Locations
+            async function fetchLocations() {
+                try {
+                    const token = localStorage.getItem('access_token');
+                    const response = await fetch(`${API_BASE_URL}/locations`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const data = await response.json();
+                    const locationSelect = document.getElementById('location');
+                    locationSelect.innerHTML = '<option value="">All Locations</option>';
+                    data.locations.forEach(loc => {
+                        const option = document.createElement('option');
+                        option.value = loc;
+                        option.textContent = loc || 'N/A';
+                        locationSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error fetching locations:', error);
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to fetch locations.', confirmButtonColor: 'var(--primary)' });
+                }
+            }
+
+            // Fetch Candidates
+            async function fetchCandidates() {
+                const search = document.getElementById('candidateSearch').value.trim();
+                const experience = document.getElementById('experience').value;
+                const location = document.getElementById('location').value;
+                const qualification = document.getElementById('qualification').value;
+
+                const params = new URLSearchParams();
+                if (search) params.append('search', search);
+                if (experience) params.append('experience', experience);
+                if (location) params.append('location', location);
+                if (qualification) params.append('qualification', qualification);
+
+                try {
+                    const token = localStorage.getItem('access_token');
+                    const response = await fetch(`${API_BASE_URL}/candidates/?${params.toString()}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.detail || 'Failed to fetch candidates');
+                    }
+                    displayCandidateCards(data.candidates);
+                } catch (error) {
+                    console.error('Error fetching candidates:', error);
+                    Swal.fire({ icon: 'error', title: 'Error', text: `Failed to fetch candidates: ${error.message}`, confirmButtonColor: 'var(--primary)' });
+                }
+            }
+
+            function capitalizeWords(str) {
+                return str.replace(/\b\w+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+            }
+
+            function displayCandidateCards(candidates) {
+                const candidatesContainer = document.getElementById('candidatesContainer');
+                candidatesContainer.innerHTML = '';
+                if (!candidates || candidates.length === 0) {
+                    candidatesContainer.innerHTML = '<p class="text-center text-gray-500 py-4">No candidates found.</p>';
+                    return;
+                }
+                
+                console.log('Fetched Candidates:', candidates);
+                candidates.forEach(candidate => {
+                    const experienceExact = candidate.experience_value ? capitalizeWords(candidate.experience_value) : 'N/A';
+                    const locationExact = candidate.LocationExact ? capitalizeWords(candidate.LocationExact) : 'N/A';
+                    const qualificationExact = candidate.QualificationExact ? capitalizeWords(candidate.QualificationExact) : 'N/A';
+                    const card = document.createElement('div');
+                    card.className = 'candidate-card';
+                    card.innerHTML = `
+                        <i data-feather="eye" class="candidate-eye-icon text-gray-500 hover:text-primary" data-cid="${candidate.candidate_id}"></i>
+                        <div class="content">
+                            <h3 class="text-lg font-semibold">${candidate.name || 'Unknown'}</h3>
+                            <p><strong>Reference:</strong> ${candidate.reference_name || 'N/A'}</p>
+                            <p><strong>Experience:</strong> ${experienceExact === "0" ? "Fresher" : experienceExact}</p>
+                            <p><strong>Location:</strong> ${locationExact}</p>
+                            <p><strong>Qualification:</strong> ${qualificationExact}</p>
+                            <p><strong>Roles:</strong> ${candidate.relevant_roles?.join(', ') || 'N/A'}</p>
+                            <p><strong>Certifications:</strong> ${Array.isArray(candidate.certifications) ? candidate.certifications.join(', ') : candidate.certifications}</p>
+                        </div>
+                        <div class="see-more" onclick="this.parentElement.classList.toggle('expanded')">See More</div>
+                    `;
+                    candidatesContainer.appendChild(card);
+                });
+                feather.replace();
+            }
+
+            // Event Listeners for Filters
+            document.getElementById('candidateSearch').addEventListener('input', fetchCandidates);
+            document.getElementById('applyFiltersBtn').addEventListener('click', fetchCandidates);
+            document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+                document.getElementById('candidateSearch').value = '';
+                document.getElementById('experience').value = '';
+                document.getElementById('location').value = '';
+                document.getElementById('qualification').value = '';
+                fetchCandidates();
+            });
+
+            // Export to Excel (Placeholder - To be implemented based on actual data structure)
+            exportExcelBtn.addEventListener('click', () => {
+                Swal.fire({ icon: 'info', title: 'Feature', text: 'Export to Excel is not implemented yet.', confirmButtonColor: 'var(--primary)' });
+            });
+
+            // Message Candidates (Placeholder - To be implemented)
+            messageCandidatesBtn.addEventListener('click', () => {
+                const selected = document.querySelectorAll('.candidate-checkbox:checked');
+                if (selected.length === 0) {
+                    Swal.fire({ icon: 'warning', title: 'No Selection', text: 'Please select at least one candidate.', confirmButtonColor: 'var(--primary)' });
+                    return;
+                }
+                Swal.fire({ icon: 'info', title: 'Feature', text: 'Message feature is not implemented yet.', confirmButtonColor: 'var(--primary)' });
+            });
+
+            // View Resume for Candidates
+            document.getElementById('candidatesContainer').addEventListener('click', async (e) => {
+                const viewBtn = e.target.closest('.candidate-eye-icon');
+                if (viewBtn) {
+                    const candidateId = viewBtn.dataset.cid;
+                    try {
+                        const token = localStorage.getItem('access_token');
+                        const response = await fetch(`${API_BASE_URL}/get-resume/${candidateId}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            const fileName = response.headers.get('Content-Disposition')?.split('filename=')[1] || `resume_${candidateId}.pdf`;
+                            const fileExtension = fileName.split('.').pop().toLowerCase();
+
+                            let viewerHtml = '';
+                            if (fileExtension === 'pdf') {
+                                const url = URL.createObjectURL(blob);
+                                viewerHtml = `<iframe class="pdf-viewer" src="${url}" type="application/pdf"></iframe>`;
+                            } else {
+                                const text = await blob.text();
+                                viewerHtml = `<pre class="resume-viewer whitespace-pre-wrap">${text}</pre>`;
+                            }
+
+                            Swal.fire({
+                                title: 'Resume Viewer',
+                                html: viewerHtml,
+                                showConfirmButton: false,
+                                showCloseButton: true,
+                                customClass: {
+                                    popup: 'max-w-4xl max-h-[80vh] overflow-y-auto'
+                                }
+                            });
+                        } else {
+                            throw new Error('Failed to fetch resume');
+                        }
+                    } catch (error) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: `Failed to view resume: ${error.message}`, confirmButtonColor: 'var(--primary)' });
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

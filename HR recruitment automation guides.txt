@@ -1,0 +1,29 @@
+Project title - Recruitment Automation system
+
+I want to build a website for HR in our company named JHS, where website will act as an assistant which will help to recruit best candidates for roles
+
+1. There will be a page which will take name of HR and a file uploader, which will take resumes and store in database and this will be on daily basis, we will be having a bunch of resumes
+2. whenever HR wants to recruit for any role, they will simply type role and will give JD, and after that we will take all the resumes from database and we will match it with JD and generate scores and will show all this in frontend in a tabular format, like name, mob no, email and resume
+3. after that system will ask timelines for the interviews, and mode (online/offline), and after submitting this, all candidates will get message from JHS bot ki - you are get selected for this role, are you available for online or offline interview (based on HR selection mode), 
+   and then will show timelines in whatsapp for interviews(based on HR timelines selection) and after that in website, it should update candidate details and interview that on this day, on this time they(HR or interviewer) will have an interview.
+4. Also i want to show other details on website like status of selected candidates, like messaged or selected for interview or rejected after interview ( and i don't know how and where should i show this)
+
+Now, i want to build this system using below tech stack
+Frontend - HTML, CSS and JS
+Backend - FastAPI, python
+Database - MongoDB
+LLM - OpenAI
+
+I don't know how should i build this, where should i integrate things in website. I want you to help me with the flow to build the website
+Also, i want to know where my plan is wrong, and where i can update other features
+And, if i present this plan to HRs, what questions i can accept, and what features should i need to add in this website, such that everyone should accept this project.
+
+
+
+
+Website Design
+Navbars 
+	- Upload bar
+	- Match resumes bar
+	- Messages bar ( which will show how many candidates we messaged today, and also a date selected dropdown above)
+	- Interviews scheduled ( which show all the scheduled interviews in different containers for different users)
