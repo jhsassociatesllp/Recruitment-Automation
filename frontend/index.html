@@ -612,7 +612,7 @@
                         body: formData
                     });
                     const data = await response.json();
-
+                    console.log("Upload Response Data:", data);
                     if (response.ok) {
                         Swal.fire({ icon: 'success', title: 'Success!', text: data.message || 'Resumes uploaded successfully.', confirmButtonColor: 'var(--primary)' });
                         document.getElementById('referenceName').value = '';
