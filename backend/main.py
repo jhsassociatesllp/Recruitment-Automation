@@ -7,7 +7,7 @@ from backend.routes.match_resumes import match_router
 from backend.routes.whatsapp_routes import whatsapp_router
 from backend.routes.auth_routes import auth_router 
 from backend.routes.all_candidates import candidate_router
-from database.auth import get_current_user
+from backend.database.auth import get_current_user
 import os
 
 app = FastAPI()
