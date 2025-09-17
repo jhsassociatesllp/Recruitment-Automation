@@ -7,9 +7,9 @@ from decouple import config
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
-from database.db import *
-from database.auth import *
-from models.model import *
+from backend.database.db import *
+from backend.database.auth import *
+from backend.models.model import *
 
 # Router
 auth_router = APIRouter()

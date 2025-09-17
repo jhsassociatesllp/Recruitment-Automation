@@ -3,8 +3,8 @@ from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 from fastapi.responses import PlainTextResponse, StreamingResponse
 import os
-from models.model import *
-from database.db import *
+from backend.models.model import *
+from backend.database.db import *
 import logging
 from typing import List, Dict
 from sse_starlette.sse import EventSourceResponse

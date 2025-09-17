@@ -8,7 +8,7 @@ import jwt
 from datetime import datetime, timedelta
 from typing import Optional
 import os
-from database.db import users_collection
+from backend.database.db import users_collection
 from dotenv import load_dotenv
 from bson import ObjectId
 

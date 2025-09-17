@@ -108,8 +108,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional, List
 from bson import ObjectId
 import json
-from database.db import resumes_collection
-from database.auth import get_current_user
+from backend.database.db import resumes_collection
+from backend.database.auth import get_current_user
 
 candidate_router = APIRouter()
 

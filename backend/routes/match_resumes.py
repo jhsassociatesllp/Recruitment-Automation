@@ -1,9 +1,9 @@
 from httpx import post
 from fastapi import APIRouter, HTTPException
-from database.db import *
-from services.route_services import *
+from backend.database.db import *
+# from services.route_services import *
 import json
-from models.model import *
+from backend.models.model import *
 import uuid
 from bson import ObjectId
 from copy import deepcopy
@@ -11,7 +11,7 @@ from fastapi.encoders import jsonable_encoder
 import openai
 from pinecone import Pinecone, ServerlessSpec
 from dotenv import load_dotenv
-from database.auth import *
+from backend.database.auth import *
 import time
 from mimetypes import guess_type
 from fastapi.responses import FileResponse
