@@ -355,7 +355,7 @@
 
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Form, Depends
-from services.route_services import *  # Assuming extract_text_from_docx is here
+# from services.route_services import *  # Assuming extract_text_from_docx is here
 from database.db import *  # Assuming resumes_collection is here
 import uuid
 from datetime import datetime
@@ -372,6 +372,7 @@ from io import BytesIO
 import fitz  # PyMuPDF
 from PIL import Image
 import base64
+import docx
 
 load_dotenv()
 
@@ -495,6 +496,14 @@ def extract_text_from_pdf(file):
     # Fallback to Vision API for scanned PDFs
     print(f"Falling back to Vision API for {file.name or 'unknown'} due to extraction failure.")
     return extract_text_from_scanned_pdf(file)
+
+def extract_text_from_docx(file):
+    try:
+        doc = docx.Document(file)
+        content = "\n".join([para.text for para in doc.paragraphs if para.text])
+        return content
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error extracting text from DOCX: {str(e)}")
 
 def convert_experience_to_years(experience):
     """Convert experience string to decimal years."""
