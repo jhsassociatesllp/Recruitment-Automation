@@ -1,8 +1,9 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, Form, Depends
-from backend.database.db import *
+from services.route_services import *  # Assuming extract_text_from_docx is here
+from database.db import *  # Assuming resumes_collection is here
 import uuid
 from datetime import datetime
-from backend.database.auth import get_current_user
+from database.auth import get_current_user
 from typing import List
 import openai
 from pinecone import Pinecone, ServerlessSpec
@@ -15,8 +16,6 @@ from io import BytesIO
 import fitz  # PyMuPDF
 from PIL import Image
 import base64
-import docx
-import json
 
 load_dotenv()
 
@@ -141,70 +140,49 @@ def extract_text_from_pdf(file):
     print(f"Falling back to Vision API for {file.name or 'unknown'} due to extraction failure.")
     return extract_text_from_scanned_pdf(file)
 
-def extract_text_from_docx(file):
-    try:
-        doc = docx.Document(file)
-        content = "\n".join([para.text for para in doc.paragraphs if para.text])
-        return content
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error extracting text from DOCX: {str(e)}")
-
-def convert_experience_to_years(experience):
-    """Convert experience string to decimal years."""
-    if not experience or "fresher" in experience.lower() or "no experience" in experience.lower():
-        return 0.0
-    try:
-        parts = experience.lower().replace("years", "").replace("year", "").strip().split()
-        years = float(parts[0])
-        if len(parts) > 1 and "month" in parts[1]:
-            months = float(parts[2]) if len(parts) > 2 else 0.0
-            years += months / 12
-        return round(years, 1)
-    except (ValueError, IndexError):
-        return 0.0
-
-def map_experience_category(years):
-    """Map decimal years to experience category."""
-    if years == 0.0:
-        return "Fresher"
-    elif 0 < years <= 1:
-        return "0–1 year"
-    elif 1 < years <= 3:
-        return "1–3 years"
-    elif 3 < years <= 5:
-        return "3–5 years"
-    else:
-        return ">5 years"
-
 def normalize_location(location):
     """Normalize location to standard city names."""
     if not location:
-        return {"LocationCategory": None, "LocationExact": None}
+        return None
     location = location.strip().lower()
-    city = location.split(",")[0].strip()  # Extract city from location string
-    if "mumbai" in city:
-        return {"LocationCategory": "Mumbai", "LocationExact": city}
-    elif "navi mumbai" in city:
-        return {"LocationCategory": "Navi Mumbai", "LocationExact": city}
-    elif "pune" in city:
-        return {"LocationCategory": "Pune", "LocationExact": city}
-    else:
-        return {"LocationCategory": city.title(), "LocationExact": city.title()}
+    if "mumbai" in location:
+        return "Mumbai" if "navi" not in location else "Navi Mumbai"
+    elif "pune" in location:
+        return "Pune"
+    return location.title()  # Capitalize other city names
+
+def map_experience(experience):
+    """Map experience to predefined categories."""
+    if not experience or "fresher" in experience.lower():
+        return "Fresher"
+    experience = experience.lower().replace("years", "").strip()
+    try:
+        years = float(experience.split()[0]) if experience.split() else 0
+        if years <= 1:
+            return "0–1 year"
+        elif years <= 3:
+            return "1–3 years"
+        elif years <= 5:
+            return "3–5 years"
+        else:
+            return "5 years"
+    except (ValueError, IndexError):
+        return "Fresher"  # Default if parsing fails
 
 def map_qualification(qualification):
     """Map qualification to predefined categories."""
     if not qualification:
-        return {"QualificationCategory": None, "QualificationExact": None}
+        return None
     qualification = qualification.lower().strip()
     if "bachelor" in qualification or "b.tech" in qualification or "b.e" in qualification:
-        return {"QualificationCategory": "Bachelor's", "QualificationExact": qualification.title()}
+        return "Bachelor’s"
     elif "master" in qualification or "m.tech" in qualification or "m.e" in qualification:
-        return {"QualificationCategory": "Master's", "QualificationExact": qualification.title()}
+        return "Master’s"
     elif "mba" in qualification:
-        return {"QualificationCategory": "MBA", "QualificationExact": qualification.title()}
+        return "MBA"
     elif "phd" in qualification:
-        return {"QualificationCategory": "PhD", "QualificationExact": qualification.title()}
-    return {"QualificationCategory": None, "QualificationExact": qualification.title()}
+        return "PhD"
+    return None
 
 @upload_router.post("/upload-resumes/")
 async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: str = Form(...), current_user: dict = Depends(get_current_user)):
@@ -248,11 +226,11 @@ async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: 
             Extract the following fields from the provided resume text in a structured JSON format:
             - full_name: The candidate's full name
             - relevant_roles: List of job roles the candidate is suitable for (e.g., ["Software Engineer", "Data Analyst"])
-            - experience: Years of experience (e.g., "2 years 4 months", "Fresher")
-            - highest_qualification: Highest educational qualification (e.g., "Bachelor of Commerce", "MBA")
+            - experience: Years of experience (e.g., "2 years", "Fresher")
+            - highest_qualification: Highest educational qualification (e.g., "B.Tech", "MBA")
             - age: Age of the candidate (if available, else null)
             - skills: List of skills mentioned (e.g., ["Python", "JavaScript"])
-            - location: Candidate's location (e.g., "Thane, Maharashtra", "Pune")
+            - location: Candidate's location (if available, else null)
             - certifications: List of certifications (if available, else [])
 
             Return the output in JSON format. If a field cannot be extracted, use null or an empty list as appropriate.
@@ -270,35 +248,20 @@ async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: 
             extracted_data = json.loads(response.choices[0].message.content)
             print(f"Extracted data for {resume.filename}: {extracted_data}")
 
-            # Process and map extracted data
-            years = convert_experience_to_years(extracted_data.get("experience"))
-            experience_category = map_experience_category(years)
-            location_data = normalize_location(extracted_data.get("location"))
-            qualification_data = map_qualification(extracted_data.get("highest_qualification"))
-
-            # Update extracted_data with structured fields
-            extracted_data.update({
-                "experience_category": experience_category,
-                "experience_value": f"{years} years" if years > 0 else "0 years",
-                **location_data,
-                **qualification_data
-            })
+            # Normalize and map extracted data
+            extracted_data["location"] = normalize_location(extracted_data.get("location"))
+            extracted_data["experience"] = map_experience(extracted_data.get("experience"))
+            extracted_data["highest_qualification"] = map_qualification(extracted_data.get("highest_qualification"))
         except Exception as e:
             print(f"Error extracting data with GPT-4o-mini for {resume.filename}: {e}")
             extracted_data = {
                 "full_name": None,
                 "relevant_roles": [],
                 "experience": None,
-                "experience_category": "Fresher",
-                "experience_value": "0 years",
                 "highest_qualification": None,
-                "qualification_category": None,
-                "qualification_exact": None,
                 "age": None,
                 "skills": [],
                 "location": None,
-                "location_category": None,
-                "location_exact": None,
                 "certifications": []
             }
 
