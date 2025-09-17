@@ -261,7 +261,7 @@
             </button>
             <div class="flex items-center space-x-4">
                 <span class="font-medium">Welcome, <span id="userName">Recruiter</span>!</span>
-                <img src="/static/jhs_logo.jpg" alt="JHS Logo" class="w-10 h-10"/>
+                <img src="jhs_logo.jpg" alt="JHS Logo" class="w-10 h-10"/>
             </div>
         </header>
 
@@ -443,7 +443,7 @@
             const token = localStorage.getItem('access_token');
             if (!token) {
                 console.error('No auth token found');
-                window.location.href = '/login';
+                window.location.href = '/static/login.html';
                 return;
             }
 
@@ -481,7 +481,7 @@
                     }).then((result) => {
                         if (result.isConfirmed) {
                             localStorage.clear();
-                            window.location.href = '/login';
+                            window.location.href = '/static/login.html';
                         }
                     });
                     return;

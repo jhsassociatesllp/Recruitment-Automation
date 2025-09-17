@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -42,13 +42,18 @@ app.include_router(auth_router)
 # Serve index.html with authentication check
 @app.get("/", response_class=FileResponse)
 async def read_root(token: str = Depends(get_current_user)):
-    if not token:
-        return RedirectResponse(url="/login")
-    index_path = os.path.join(frontend_path, "index.html")
-    if not os.path.exists(index_path):
-        print(f"Index file not found at: {index_path}")
-        raise HTTPException(status_code=404, detail="index.html not found")
-    return FileResponse(index_path, media_type="text/html")
+    try:
+        if not token:
+            return RedirectResponse(url="/login")
+        index_path = os.path.join(frontend_path, "index.html")
+        if not os.path.exists(index_path):
+            print(f"Index file not found at: {index_path}")
+            raise HTTPException(status_code=404, detail="index.html not found")
+        return FileResponse(index_path, media_type="text/html")
+    except HTTPException as e:
+        if e.status_code == status.HTTP_401_UNAUTHORIZED:
+            return RedirectResponse(url="/login")
+        raise e
 
 # Serve login.html
 @app.get("/login", response_class=FileResponse)
