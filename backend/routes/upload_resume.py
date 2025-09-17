@@ -432,10 +432,10 @@
 
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Form, Depends
-from database.db import *  # Assuming resumes_collection is here
+from backend.database.db import *  # Assuming resumes_collection is here
 import uuid
 from datetime import datetime
-from database.auth import get_current_user
+from backend.database.auth import get_current_user
 from typing import List
 import openai
 from pinecone import Pinecone, ServerlessSpec
