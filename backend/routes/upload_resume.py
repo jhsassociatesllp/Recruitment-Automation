@@ -355,8 +355,7 @@
 
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Form, Depends
-# from services.route_services import *  # Assuming extract_text_from_docx is here
-from backend.database.db import *  # Assuming resumes_collection is here
+from backend.database.db import * 
 import uuid
 from datetime import datetime
 from backend.database.auth import get_current_user
@@ -373,6 +372,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 import base64
 import docx
+import json
 
 load_dotenv()
 
@@ -562,19 +562,201 @@ def map_qualification(qualification):
         return {"QualificationCategory": "PhD", "QualificationExact": qualification.title()}
     return {"QualificationCategory": None, "QualificationExact": qualification.title()}
 
+# @upload_router.post("/upload-resumes/")
+# async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: str = Form(...), current_user: dict = Depends(get_current_user)):
+#     print(f"Reference Name: {reference_name}")
+#     print(f"Resumes: {resumes}")
+#     hr_id = str(current_user["_id"])
+#     if not reference_name:
+#         raise HTTPException(status_code=400, detail="Reference Name is mandatory.")
+
+#     print(f"Current User: {current_user}")
+#     allowed_types = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+#     max_size = 5 * 1024 * 1024  # 5MB in bytes
+
+#     uploaded_resumes = []
+#     for i, resume in enumerate(resumes):
+#         print(f"Processing file {i+1}/{len(resumes)}: {resume.filename}")
+#         if resume.content_type not in allowed_types:
+#             print(f"Skipping invalid file type: {resume.filename}")
+#             continue
+
+#         file_content = await resume.read()
+#         file_size = len(file_content)
+#         if file_size > max_size:
+#             print(f"Skipping large file: {resume.filename} (size: {file_size} bytes)")
+#             continue
+
+#         content = ""
+#         resume.file.seek(0)
+#         try:
+#             if resume.content_type == "application/pdf":
+#                 content = extract_text_from_pdf(resume.file)
+#             else:
+#                 content = extract_text_from_docx(resume.file)
+#         except Exception as e:
+#             print(f"Error extracting text from {resume.filename}: {e}")
+#             content = ""  # Set to empty string if extraction fails
+
+#         # Extract structured data using GPT-4o-mini
+#         try:
+#             prompt = """
+#             Extract the following fields from the provided resume text in a structured JSON format:
+#             - full_name: The candidate's full name
+#             - relevant_roles: List of job roles the candidate is suitable for (e.g., ["Software Engineer", "Data Analyst"])
+#             - experience: Years of experience (e.g., "2 years 4 months", "Fresher")
+#             - highest_qualification: Highest educational qualification (e.g., "Bachelor of Commerce", "MBA")
+#             - age: Age of the candidate (if available, else null)
+#             - skills: List of skills mentioned (e.g., ["Python", "JavaScript"])
+#             - location: Candidate's location (e.g., "Thane, Maharashtra", "Pune")
+#             - certifications: List of certifications (if available, else [])
+
+#             Return the output in JSON format. If a field cannot be extracted, use null or an empty list as appropriate.
+#             Resume text:
+#             {resume_text}
+#             """
+#             response = openai_client.chat.completions.create(
+#                 model="gpt-4o-mini",
+#                 messages=[
+#                     {"role": "system", "content": "You are a helpful assistant skilled in extracting structured data from text."},
+#                     {"role": "user", "content": prompt.format(resume_text=content or "No content extracted")}
+#                 ],
+#                 response_format={"type": "json_object"}
+#             )
+#             extracted_data = json.loads(response.choices[0].message.content)
+#             print(f"Extracted data for {resume.filename}: {extracted_data}")
+
+#             # Process and map extracted data
+#             years = convert_experience_to_years(extracted_data.get("experience"))
+#             experience_category = map_experience_category(years)
+#             location_data = normalize_location(extracted_data.get("location"))
+#             qualification_data = map_qualification(extracted_data.get("highest_qualification"))
+
+#             # Update extracted_data with structured fields
+#             extracted_data.update({
+#                 "experience_category": experience_category,
+#                 "experience_value": f"{years} years" if years > 0 else "0 years",
+#                 **location_data,
+#                 **qualification_data
+#             })
+#         except Exception as e:
+#             print(f"Error extracting data with GPT-4o-mini for {resume.filename}: {e}")
+#             extracted_data = {
+#                 "full_name": None,
+#                 "relevant_roles": [],
+#                 "experience": None,
+#                 "experience_category": "Fresher",
+#                 "experience_value": "0 years",
+#                 "highest_qualification": None,
+#                 "qualification_category": None,
+#                 "qualification_exact": None,
+#                 "age": None,
+#                 "skills": [],
+#                 "location": None,
+#                 "location_category": None,
+#                 "location_exact": None,
+#                 "certifications": []
+#             }
+
+#         resume_id = str(uuid.uuid4())
+#         candidate_id = str(uuid.uuid4())
+
+#         resume_doc = {
+#             "_id": resume_id,
+#             "candidate_id": candidate_id,
+#             "hr_id": hr_id,
+#             "reference_name": reference_name,
+#             "content": content,
+#             "file_data": file_content,  # Store original binary data
+#             "file_type": "pdf" if resume.content_type == "application/pdf" else "docx",
+#             "file_name": resume.filename,
+#             "upload_date": datetime.utcnow().isoformat(),
+#             "data": extracted_data,
+#             "metadata": {
+#                 "source": "website_upload",
+#                 "size": file_size,
+#                 "parsed_successfully": bool(content)
+#             }
+#         }
+#         try:
+#             resumes_collection.insert_one(resume_doc)
+#             print(f"Stored resume: {resume.filename} with ID: {resume_id}")
+#         except Exception as e:
+#             print(f"Error storing resume {resume.filename} in MongoDB: {e}")
+#             continue
+
+#         try:
+#             embedding_response = openai_client.embeddings.create(
+#                 input=content or "",
+#                 model="text-embedding-3-small"
+#             )
+#             embedding = embedding_response.data[0].embedding
+#             print(f"Created embedding for {resume.filename}")
+#         except Exception as e:
+#             print(f"Error creating embedding for {resume.filename}: {e}")
+#             continue
+
+#         max_retries = 3
+#         for attempt in range(max_retries):
+#             try:
+#                 print(f"Attempting to add embedding to Pinecone (Attempt {attempt + 1}/{max_retries})")
+#                 start_time = time.time()
+#                 index.upsert(
+#                     vectors=[
+#                         {
+#                             "id": resume_id,
+#                             "values": embedding,
+#                             "metadata": {
+#                                 "resume_id": resume_id,
+#                                 "candidate_id": candidate_id,
+#                                 "hr_id": hr_id,
+#                                 "reference_name": reference_name,
+#                                 "file_name": resume.filename
+#                             }
+#                         }
+#                     ]
+#                 )
+#                 elapsed_time = time.time() - start_time
+#                 print(f"Added embedding for resume: {resume.filename} to Pinecone in {elapsed_time:.2f} seconds")
+#                 break
+#             except Exception as e:
+#                 print(f"Error adding embedding for {resume.filename} to Pinecone (Attempt {attempt + 1}): {str(e)}")
+#                 print(f"Stack trace: {traceback.format_exc()}")
+#                 if attempt < max_retries - 1:
+#                     time.sleep(2 ** attempt)  # Exponential backoff
+#                 else:
+#                     print(f"Max retries reached for {resume.filename}, skipping")
+#                     break
+
+#         uploaded_resumes.append({
+#             "resume_id": resume_id,
+#             "candidate_id": candidate_id,
+#             "file_name": resume.filename
+#         })
+
+#     if uploaded_resumes:
+#         return {
+#             "message": "Resumes uploaded successfully",
+#             "status": 200,
+#             "success": True,
+#             "data": uploaded_resumes
+#         }
+#     else:
+#         raise HTTPException(status_code=400, detail="No valid resumes uploaded.")
+
 @upload_router.post("/upload-resumes/")
 async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: str = Form(...), current_user: dict = Depends(get_current_user)):
-    print(f"Reference Name: {reference_name}")
-    print(f"Resumes: {resumes}")
+    if not openai.api_key:
+        raise HTTPException(status_code=500, detail="OpenAI API key not configured")
+    
     hr_id = str(current_user["_id"])
     if not reference_name:
         raise HTTPException(status_code=400, detail="Reference Name is mandatory.")
 
-    print(f"Current User: {current_user}")
     allowed_types = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
-    max_size = 5 * 1024 * 1024  # 5MB in bytes
-
+    max_size = 5 * 1024 * 1024
     uploaded_resumes = []
+
     for i, resume in enumerate(resumes):
         print(f"Processing file {i+1}/{len(resumes)}: {resume.filename}")
         if resume.content_type not in allowed_types:
@@ -594,11 +776,18 @@ async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: 
                 content = extract_text_from_pdf(resume.file)
             else:
                 content = extract_text_from_docx(resume.file)
+            print(f"Extracted content for {resume.filename}: {content[:500]}...")
         except Exception as e:
-            print(f"Error extracting text from {resume.filename}: {e}")
-            content = ""  # Set to empty string if extraction fails
+            print(f"Error extracting text from {resume.filename}: {str(e)}")
+            print(f"Stack trace: {traceback.format_exc()}")
+            return {
+                "message": "Failed to extract text from resume",
+                "status": 400,
+                "success": False,
+                "error": f"Text extraction failed for {resume.filename}: {str(e)}"
+            }
 
-        # Extract structured data using GPT-4o-mini
+        # Extract structured data
         try:
             prompt = """
             Extract the following fields from the provided resume text in a structured JSON format:
@@ -624,23 +813,19 @@ async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: 
                 response_format={"type": "json_object"}
             )
             extracted_data = json.loads(response.choices[0].message.content)
+            print(f"Raw OpenAI response for {resume.filename}: {response.choices[0].message.content}")
             print(f"Extracted data for {resume.filename}: {extracted_data}")
 
-            # Process and map extracted data
             years = convert_experience_to_years(extracted_data.get("experience"))
-            experience_category = map_experience_category(years)
-            location_data = normalize_location(extracted_data.get("location"))
-            qualification_data = map_qualification(extracted_data.get("highest_qualification"))
-
-            # Update extracted_data with structured fields
             extracted_data.update({
-                "experience_category": experience_category,
+                "experience_category": map_experience_category(years),
                 "experience_value": f"{years} years" if years > 0 else "0 years",
-                **location_data,
-                **qualification_data
+                **normalize_location(extracted_data.get("location")),
+                **map_qualification(extracted_data.get("highest_qualification"))
             })
         except Exception as e:
-            print(f"Error extracting data with GPT-4o-mini for {resume.filename}: {e}")
+            print(f"Error extracting data with GPT-4o-mini for {resume.filename}: {str(e)}")
+            print(f"Stack trace: {traceback.format_exc()}")
             extracted_data = {
                 "full_name": None,
                 "relevant_roles": [],
@@ -667,7 +852,7 @@ async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: 
             "hr_id": hr_id,
             "reference_name": reference_name,
             "content": content,
-            "file_data": file_content,  # Store original binary data
+            "file_data": file_content,
             "file_type": "pdf" if resume.content_type == "application/pdf" else "docx",
             "file_name": resume.filename,
             "upload_date": datetime.utcnow().isoformat(),
@@ -692,41 +877,25 @@ async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: 
             )
             embedding = embedding_response.data[0].embedding
             print(f"Created embedding for {resume.filename}")
-        except Exception as e:
-            print(f"Error creating embedding for {resume.filename}: {e}")
-            continue
-
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                print(f"Attempting to add embedding to Pinecone (Attempt {attempt + 1}/{max_retries})")
-                start_time = time.time()
-                index.upsert(
-                    vectors=[
-                        {
-                            "id": resume_id,
-                            "values": embedding,
-                            "metadata": {
-                                "resume_id": resume_id,
-                                "candidate_id": candidate_id,
-                                "hr_id": hr_id,
-                                "reference_name": reference_name,
-                                "file_name": resume.filename
-                            }
+            index.upsert(
+                vectors=[
+                    {
+                        "id": resume_id,
+                        "values": embedding,
+                        "metadata": {
+                            "resume_id": resume_id,
+                            "candidate_id": candidate_id,
+                            "hr_id": hr_id,
+                            "reference_name": reference_name,
+                            "file_name": resume.filename
                         }
-                    ]
-                )
-                elapsed_time = time.time() - start_time
-                print(f"Added embedding for resume: {resume.filename} to Pinecone in {elapsed_time:.2f} seconds")
-                break
-            except Exception as e:
-                print(f"Error adding embedding for {resume.filename} to Pinecone (Attempt {attempt + 1}): {str(e)}")
-                print(f"Stack trace: {traceback.format_exc()}")
-                if attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                else:
-                    print(f"Max retries reached for {resume.filename}, skipping")
-                    break
+                    }
+                ]
+            )
+            print(f"Added embedding for resume: {resume.filename} to Pinecone")
+        except Exception as e:
+            print(f"Error creating/adding embedding for {resume.filename}: {e}")
+            continue
 
         uploaded_resumes.append({
             "resume_id": resume_id,
@@ -741,5 +910,4 @@ async def upload_resumes(resumes: List[UploadFile] = File(...), reference_name: 
             "success": True,
             "data": uploaded_resumes
         }
-    else:
-        raise HTTPException(status_code=400, detail="No valid resumes uploaded.")
+    raise HTTPException(status_code=400, detail="No valid resumes uploaded.")
