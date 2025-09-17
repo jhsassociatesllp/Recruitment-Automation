@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from routes.upload_resume import upload_router
-from routes.match_resumes import match_router
-from routes.whatsapp_routes import whatsapp_router
-from routes.auth_routes import auth_router 
-from routes.all_candidates import candidate_router
+from backend.routes.upload_resume import upload_router
+from backend.routes.match_resumes import match_router
+from backend.routes.whatsapp_routes import whatsapp_router
+from backend.routes.auth_routes import auth_router 
+from backend.routes.all_candidates import candidate_router
 import os
 from fastapi.staticfiles import StaticFiles
 
