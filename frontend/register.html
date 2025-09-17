@@ -115,7 +115,7 @@
     </form>
 
     <p class="mt-4 text-sm text-white">
-      Already have an account? <a href="login.html" class="link">Login here</a>
+      Already have an account? <a href="/static/login.html" class="link">Login here</a>
     </p>
   </div>
 
@@ -145,7 +145,7 @@
 
         if (response.ok) {
           Swal.fire({ icon: 'success', title: 'Success', text: 'Registration successful! Please login.' });
-          window.location.href = 'login.html';
+          window.location.href = '/static/login.html';
         } else {
           Swal.fire({ icon: 'error', title: 'Registration Failed', text: data.detail });
         }

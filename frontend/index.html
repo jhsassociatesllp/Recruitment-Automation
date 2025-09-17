@@ -443,7 +443,7 @@
             const token = localStorage.getItem('access_token');
             if (!token) {
                 console.error('No auth token found');
-                window.location.href = 'login.html';
+                window.location.href = '/static/login.html';
                 return;
             }
 
@@ -481,7 +481,7 @@
                     }).then((result) => {
                         if (result.isConfirmed) {
                             localStorage.clear();
-                            window.location.href = 'login.html';
+                            window.location.href = '/static/login.html';
                         }
                     });
                     return;
