@@ -14,7 +14,7 @@ from backend.models.model import *
 # Router
 auth_router = APIRouter()
 
-@auth_router.post("auth/register/", status_code=status.HTTP_201_CREATED)
+@auth_router.post("/auth/register/", status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
     if user.password != user.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
@@ -32,7 +32,7 @@ async def register(user: UserCreate):
     result = users_collection.insert_one(user_doc)
     return {"message": "User registered successfully", "user_id": str(result.inserted_id)}
 
-@auth_router.post("auth/login/", response_model=Token)
+@auth_router.post("/auth/login/", response_model=Token)
 async def login(user: UserLogin):
     print(f"Received email: {user.email}, password: {user.password}")  # Debug
     user_doc = users_collection.find_one({"email": user.email})
